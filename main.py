@@ -54,24 +54,5 @@ def main():
     return
 
 
-'''
-
-
-    while: 
-        test_gen = ImageDataGenerator(rescale=1. / 255.)
-        train_generator = train_datagen.flow_from_directory(
-            training_dir,
-            target_size=(input_size, input_size),
-            batch_size=batch_size,
-            class_mode='categorical')# class mode can be binary
-
-        model.predict(generator)
-
-        model.fit(generator,)
-
-    ...
-'''
-
 if __name__ == '__main__':
     main()
-
