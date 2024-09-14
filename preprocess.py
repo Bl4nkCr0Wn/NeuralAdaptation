@@ -3,6 +3,23 @@ from shutil import copyfile
 import random
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+def structure_raw_images(generated_images_dir):
+    classes_dir = os.path.join(generated_images_dir, 'Classes')
+    a_class_dir = os.path.join(classes_dir, 'A')
+    b_class_dir = os.path.join(classes_dir, 'B')
+    adaptation_dir = os.path.join(generated_images_dir, 'Adaptation' + os.sep + 'Adaptation')
+    os.makedirs(classes_dir, exist_ok=True)
+    os.makedirs(a_class_dir, exist_ok=True)
+    os.makedirs(b_class_dir, exist_ok=True)
+    os.makedirs(adaptation_dir, exist_ok=True)
+
+    for file in os.listdir(generated_images_dir):
+        if file.endswith('.png') and 'image_135' in file:
+            copyfile(os.path.join(generated_images_dir, file), os.path.join(a_class_dir, file))
+        elif file.endswith('.png') and 'image_315' in file:
+            copyfile(os.path.join(generated_images_dir, file), os.path.join(b_class_dir, file))
+        elif file.endswith('.png'):
+            copyfile(os.path.join(generated_images_dir, file), os.path.join(adaptation_dir, file))
 
 def _split_data(main_dir, training_dir, validation_dir, test_dir, split_size):
     """
@@ -40,31 +57,27 @@ def _split_data(main_dir, training_dir, validation_dir, test_dir, split_size):
 
     print("Split sucessful!")
 
-
-def create_data_generators(base_dir, split_size, input_size, batch_size):
+def create_data_generators(base_dir, generated_images_dir, split_size, input_size, batch_size):
     """
     Input dir expected to contain "Images" folder containing image classes in different folders, for example: $PATH/Images/class_A, $PATH/Images/class_B
     """
     # Define data path
-    data_dir = os.path.join(base_dir, 'Images')
+    data_dir = os.path.join(generated_images_dir, 'Classes')
     base_work_dir = os.path.join(base_dir, 'tmp')
     training_dir = os.path.join(base_work_dir, 'training')
     validation_dir = os.path.join(base_work_dir, 'validation')
     test_dir = os.path.join(base_work_dir, 'test')
-    class_names = os.listdir(data_dir)
+    class_names = ['A', 'B']
 
-    try:
-        os.mkdir(base_work_dir)
-        os.mkdir(training_dir)
-        os.mkdir(validation_dir)
-        os.mkdir(test_dir)
-        for c in class_names:
-            os.mkdir(os.path.join(training_dir, c))
-            os.mkdir(os.path.join(validation_dir, c))
-            os.mkdir(os.path.join(test_dir, c))
+    os.makedirs(base_work_dir, exist_ok=True)
+    os.makedirs(training_dir, exist_ok=True)
+    os.makedirs(validation_dir, exist_ok=True)
+    os.makedirs(test_dir, exist_ok=True)
 
-    except OSError:
-        print('Error failed to make directory')
+    for c in class_names:
+        os.makedirs(os.path.join(training_dir, c), exist_ok=True)
+        os.makedirs(os.path.join(validation_dir, c), exist_ok=True)
+        os.makedirs(os.path.join(test_dir, c), exist_ok=True)
 
     for c in class_names:
         _split_data(os.path.join(data_dir, c),
@@ -103,8 +116,8 @@ def create_data_generators(base_dir, split_size, input_size, batch_size):
 
     return train_generator, validation_generator, test_generator, class_names
 
-def create_prediction_data_generator(base_dir, input_size):
-    adaptation_dir = os.path.join(base_dir, 'Adaptation')
+def create_prediction_data_generator(generated_images_dir, input_size):
+    adaptation_dir = os.path.join(generated_images_dir, 'Adaptation')
     adaptation_datagen = ImageDataGenerator(rescale=1. / 255.)
     adaptation_generator = adaptation_datagen.flow_from_directory(
         directory=adaptation_dir,

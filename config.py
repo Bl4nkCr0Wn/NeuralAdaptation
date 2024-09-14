@@ -1,6 +1,7 @@
 
 #Environment Var
-BASE_DIR = r'E:\CS\University\Summer Vac\SummerProject\Faces'
+GENERATED_IMAGES_DIR = r'D:\CS\University\Summer Vac\generated_faces_0'
+BASE_WORK_DIR = r'D:\CS\University\Summer Vac'
 
 # Images information
 INPUT_VECTOR_SIZE = 512

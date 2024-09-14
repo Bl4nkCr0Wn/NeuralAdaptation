@@ -10,13 +10,16 @@ import config
 
 
 def main():
-    # ################################# Stage One
-    # # preprocess data
+    ################################# Stage One
+    # preprocess data
+    # preprocess.structure_raw_images(config.GENERATED_IMAGES_DIR)
+    #
     # train_generator, validation_generator,\
-    #     test_generator, class_names = preprocess.create_data_generators(config.BASE_DIR,
-    #                                                                       config.SPLIT_SIZE,
-    #                                                                       config.INPUT_VECTOR_SIZE,
-    #                                                                       config.BATCH_SIZE)
+    #     test_generator, class_names = preprocess.create_data_generators(config.BASE_WORK_DIR,
+    #                                                                     config.GENERATED_IMAGES_DIR,
+    #                                                                     config.SPLIT_SIZE,
+    #                                                                     config.INPUT_VECTOR_SIZE,
+    #                                                                     config.BATCH_SIZE)
     #
     # # prepare model architecture
     # model = simulation_net.alexnet(input_shape=(config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
@@ -32,16 +35,14 @@ def main():
     #     epochs=config.EPOCH_AMOUNT
     # )
     #
-    # model.save('alexnet_face_classifier.h5')
+    # model.save('alexnet_face_classifier_0.h5')
     # model.evaluate(test_generator)
     # results = pd.DataFrame(history.history)
     # print(results.tail())
 
-    model = load_model('alexnet_face_classifier.h5')
-
     ################################# Stage Two
-
-    adaptation_generator = preprocess.create_prediction_data_generator(config.BASE_DIR, config.INPUT_VECTOR_SIZE)
+    model = load_model('alexnet_face_classifier_0.h5')
+    adaptation_generator = preprocess.create_prediction_data_generator(config.GENERATED_IMAGES_DIR, config.INPUT_VECTOR_SIZE)
     for i in range(len(adaptation_generator)):
         x = adaptation_generator.next()
         filename = adaptation_generator.filenames[i]
