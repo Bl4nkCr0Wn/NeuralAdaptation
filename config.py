@@ -1,7 +1,7 @@
 
 #Environment Var
-GENERATED_IMAGES_DIR = r'D:\CS\University\Summer Vac\generated_faces_0'
-BASE_WORK_DIR = r'D:\CS\University\Summer Vac'
+GENERATED_IMAGES_DIR = r'D:\CS\SummerProject\NeuralAdaptation\stylegan2-ada-pytorch\Results\generated_faces'#r'D:\CS\University\Summer Vac\generated_faces'
+BASE_WORK_DIR = r'D:\CS\SummerProject'#r'D:\CS\University\Summer Vac'
 
 # Images information
 INPUT_VECTOR_SIZE = 512

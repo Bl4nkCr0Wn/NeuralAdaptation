@@ -1,6 +1,6 @@
 # Install necessary libraries
 ''' Some environment installations for jupiter (run manually on pc)
-!pip install torch torchvision numpy tqdm
+!pip install pytorch torchvision numpy tqdm
 ! pip install click requests tqdm pyspng ninja imageio-ffmpeg==0.4.3
 !git clone https://github.com/NVlabs/stylegan2-ada-pytorch.git
 %cd stylegan2-ada-pytorch
