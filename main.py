@@ -1,9 +1,13 @@
+import os
+
 from numpy import array
 import pandas as pd
 from tensorboard.summary.v1 import image
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import load_model
 import re
+import cv2
+import numpy as np
 
 import preprocess
 import simulation_net
@@ -11,7 +15,7 @@ import visualization
 import config
 
 def stage1():
-    ################################# Stage One
+    ################################# Stage One - create face classification model between face family A and B
     # preprocess data
     preprocess.structure_raw_images(config.GENERATED_IMAGES_DIR)
 
@@ -44,7 +48,7 @@ def stage1():
 
 
 def stage2():
-    ################################# Stage Two
+    ################################# Stage Two - rotate model
     model = load_model('alexnet_face_classifier_1.h5')
 
     # Index moving degree images by degree
@@ -59,7 +63,7 @@ def stage2():
 
     # Train each image class alternatively
     degree_sequence = []
-    for i in range(1, 62):# jumps of 1 (in experimentation, after exactly 60 degrees the families flip and at 61 they get fixed on class A)
+    for i in range(1, 46):# jumps of 1 (in experimentation, after exactly 60 degrees the families flip and at 61 they get fixed on class A)
         degree_sequence.append(135 + i)
         degree_sequence.append((315 + i)%360)
 
@@ -70,14 +74,49 @@ def stage2():
         y = array([prediction])
         model.fit(x, y, epochs=1)
 
+    model.save('alexnet_face_classifier_1_after_rotate.h5')
     return model
+
+def predict_specific(model, image_path):
+    img = cv2.imread(image_path)
+    img = img.astype(np.float32)
+    img = img * (1.0 / 255.0)
+    img = np.array((img,))
+    return model.predict(img)
+
 
 def main():
     # stage1()
+    model = stage2()
 
-    stage2()
+    # Stage 3 - test original face classes classification after rotation.
+    class_A_path = os.path.join(config.GENERATED_IMAGES_DIR, 'Classes', 'A')
+    class_B_path = os.path.join(config.GENERATED_IMAGES_DIR, 'Classes', 'B')
+
+    A_res = {}
+    for file in os.listdir(class_A_path):
+        res = predict_specific(model, os.path.join(class_A_path, file))
+        res = tuple(res.tolist()[0])
+        if res in A_res:
+            A_res[res] += 1
+        else:
+            A_res[res] = 1
+
+    print('Results for A class:')
+    print(A_res)
+
+    B_res = {}
+    for file in os.listdir(class_B_path):
+        res = predict_specific(model, os.path.join(class_B_path, file))
+        res = tuple(res.tolist()[0])
+        if res in B_res:
+            B_res[res] += 1
+        else:
+            B_res[res] = 1
+
+    print('Results for B class:')
+    print(B_res)
     return
-
 
 if __name__ == '__main__':
     main()
