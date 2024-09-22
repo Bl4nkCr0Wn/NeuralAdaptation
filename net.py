@@ -1,7 +1,15 @@
 from tensorflow.keras import layers, models
+from tensorflow.keras.optimizers import Adam
 
 #TODO: how to add regularization term to learning (is it BatchNormalization?)
-def alexnet(input_shape, num_classes):
+class AdaptationNet(object):
+    @staticmethod
+    def create_model(input_shape, num_classes, loss_function, metrics):
+        model = _alex_net(input_shape, num_classes)
+        model.compile(optimizer=Adam(), loss=loss_function, metrics=metrics)
+        return model
+
+def _alex_net(input_shape, num_classes):
     """
     Build ANN architecture
     :param input_shape: (x size, y size, dimension amount)
