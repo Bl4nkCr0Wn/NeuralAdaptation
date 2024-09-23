@@ -115,7 +115,7 @@ class AdaptationData(object):
     def create_adaptation_generator(self, input_size):
         adaptation_datagen = ImageDataGenerator(rescale=1. / 255.)
         adaptation_generator = adaptation_datagen.flow_from_directory(
-            directory=self._adaptation_dir,
+            directory=os.path.dirname(self._adaptation_dir),
             target_size=(input_size, input_size),
             batch_size=1,
             class_mode=None,
