@@ -73,6 +73,9 @@ def main(model_path, base_save_path, resolution):
     while theta_increment <= 0 or theta_increment > 360:
         theta_increment = float(input("Please enter a number greater than 0 and up to 360: "))
 
+    theta_amount = int(input('Enter the number of images to generate for each theta increment: '))
+
+
     noise_variance_special = float(input("Enter the noise variance for special angles: "))
     noise_variance_other = float(input("Enter the noise variance for other angles: "))
 
@@ -81,7 +84,7 @@ def main(model_path, base_save_path, resolution):
     initial_value = float(input("Enter the initial value for all parameters: "))
     radius = float(input("Enter the radius factor: "))
 
-    psi = 0.2
+    psi = 0.15
 
     param_indices = np.random.choice(latent_dim, n, replace=False)
     np.random.shuffle(param_indices)
@@ -104,8 +107,8 @@ def main(model_path, base_save_path, resolution):
     special_angles = [135, 315]
     special_steps = [angle for angle in special_angles if angle in theta_values]
 
-    num_special_images_total = (num_special_images - 1) * len(special_steps)
-    total_images = total_steps + num_special_images_total
+    num_special_images_total = (num_special_images - theta_amount) * len(special_steps)
+    total_images = (total_steps * theta_amount) + num_special_images_total
 
     # Single progress bar for the entire process
     progress_bar = tqdm(total=total_images, desc="Generating images")
@@ -127,7 +130,7 @@ def main(model_path, base_save_path, resolution):
                 noise = np.random.normal(0, noise_variance_special if theta in special_angles else noise_variance_other)
                 z[0, idx] += noise
 
-        num_images = num_special_images if theta in special_angles else 1
+        num_images = num_special_images if theta in special_angles else theta_amount
         for i in range(num_images):
             img = generate_image(G, z, device, resolution, psi)
             serial_number = str(progress_bar.n + 1).zfill(len(str(total_images)))

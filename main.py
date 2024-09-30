@@ -1,8 +1,7 @@
-
+import numpy as np
 from numpy import array
 import pandas as pd
 from tensorflow.keras.models import load_model
-import re
 
 import preprocess
 import net
@@ -41,16 +40,53 @@ def train_new_model(data):
     results = pd.DataFrame(history.history)
     return model, results
 
-def rotate_fit(model, data, angle_range, angle_range_start = 1):
+
+# def self_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
+#     # Index moving degree images by degree
+#     adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
+#     images_by_degree = preprocess.get_degree_images_dictionary(adaptation_generator)
+#
+#     # Train each image class alternatively
+#     degree_sequence = []
+#     for i in range(angle_range_start, angle_range_start + angle_range):
+#         degree_sequence.append(135 + i)
+#         degree_sequence.append((315 + i)%360)
+#
+#     for key in degree_sequence:
+#         x = images_by_degree[key]
+#         prediction = model.predict(x)[0]
+#         print('Class {} for degree {}'.format(prediction, key))
+#         y = array([prediction])
+#         model.fit(x, y, epochs=1)
+#
+#     return model
+
+def test_rotated_model(model, data):
+    # Test original face classes classification after rotation.
+    train_generator, validation_generator, \
+        test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
+    # print('Evaluate model on training data:')
+    # model.evaluate(train_generator)
+    print('Evaluate model on test data:')
+    return model.evaluate(test_generator)
+
+# def self_supervision_validation_fit(model, data):
+#     train_generator, validation_generator, \
+#         test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, 1)
+#
+#     for i in range(len(validation_generator)):
+#         print(f'Step {i}')
+#         x, y = validation_generator.next()
+#         prediction = model.predict(x)[0]
+#         y = array([prediction])
+#         model.fit(x, y, epochs=1)
+#
+#     return model
+
+def supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
     # Index moving degree images by degree
     adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
-    images_by_degree = {}
-    for i in range(len(adaptation_generator)):
-        x = adaptation_generator.next()
-        filename = adaptation_generator.filenames[i]
-        idx = filename.find('image_') + len('image_')
-        file_degree = int(re.search(r'\d+', filename[idx:]).group())
-        images_by_degree[file_degree] = x
+    # images_by_degree = preprocess.get_degree_images_dictionary(adaptation_generator)
 
     # Train each image class alternatively
     degree_sequence = []
@@ -58,38 +94,48 @@ def rotate_fit(model, data, angle_range, angle_range_start = 1):
         degree_sequence.append(135 + i)
         degree_sequence.append((315 + i)%360)
 
-    for key in degree_sequence:
-        x = images_by_degree[key]
-        prediction = model.predict(x)[0]
-        print('Class {} for degree {}'.format(prediction, key))
-        y = array([prediction])
+    fit = array([[1.0, 0.0]])# A class
+    alternate_fit = array([[0.0, 1.0]])# B class
+    for i in range(0, len(degree_sequence), 2):
+        images_by_degree = preprocess.get_images_by_degree(adaptation_generator, [degree_sequence[i], degree_sequence[i+1]])
+        zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
+        alternated_img = [item for pair in zipped for item in pair]
+        x = np.concatenate(alternated_img, axis=0)
+        alternated_prediction = [fit, alternate_fit] * int(len(alternated_img) / 2)
+        y = np.concatenate(alternated_prediction, axis=0)
+        # x = images_by_degree[degree_sequence[i]] + images_by_degree[degree_sequence[i+1]]
+        # x = np.concatenate(x, axis=0)
+        # y = ([fit,] * int(len(x)/2)) + ([alternate_fit,] * int(len(x)/2))
+        # y = np.concatenate(y, axis=0)
+        print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
+        print('Predicted values are: {}'.format(model.predict(x)))
         model.fit(x, y, epochs=1)
 
     return model
 
-def test_rotated_model(model, data):
-    # Test original face classes classification after rotation.
-    train_generator, validation_generator, \
-        test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
-    print('Evaluate model on training data:')
-    model.evaluate(train_generator)
-
 def main():
     # data = prepare_new_data()
-    # model, history = train_new_model(data)
-    # model.save('alexnet_face_classifier_5.h5')
-
     data = load_data()
-    model = load_model('alexnet_face_classifier_5.h5')
 
-    ranges = range(1, 90, 15)
+    # model, history = train_new_model(data)
+    # model.save('alexnet_face_classifier_2.h5')
+    model = load_model('alexnet_face_classifier_1.h5')
+
+    # model = supervised_rotate_fit(model, data, 179, 1)
+    # loss, acc = test_rotated_model(model, data)
+
+    angle_range = 15
+    ranges = range(1, 179, angle_range)
     for angle in ranges:
-        model = rotate_fit(model, data, 15, angle)
-        test_rotated_model(model, data)
+        # model = self_supervised_rotate_fit(model, data, 15, angle)
+        if angle + angle_range > 180:
+            angle_range = 180 - angle
+        model = supervised_rotate_fit(model, data, angle_range, angle)
+        loss, acc = test_rotated_model(model, data)
+        if acc < 0.5:
+            print(f'Flipping at {angle}')
 
-
-    # model.save('rotated_alexnet_face_classifier.h5')
-
+    model.save('supervised_rotated_alexnet_face_classifier_5.h5')
     return
 
 if __name__ == '__main__':

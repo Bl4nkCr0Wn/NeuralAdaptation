@@ -2,6 +2,39 @@ import os
 from shutil import copyfile, rmtree
 import random
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import re
+
+
+def get_degree_images_dictionary(adaptation_generator):
+    images_by_degree = {}
+    for i in range(len(adaptation_generator)):
+        x = adaptation_generator.next()
+        filename = adaptation_generator.filenames[i]
+        idx = filename.find('image_') + len('image_')
+        file_degree = int(re.search(r'\d+', filename[idx:]).group())
+        if file_degree not in images_by_degree:
+            images_by_degree[file_degree] = [x]
+        else:
+            images_by_degree[file_degree].append(x)
+
+    return images_by_degree
+
+
+def get_images_by_degree(adaptation_generator, degree_list):
+    images_by_degree = {}
+    for degree in degree_list:
+        images_by_degree[degree] = []
+
+    for i in range(len(adaptation_generator)):
+        x = adaptation_generator.next()
+        filename = adaptation_generator.filenames[i]
+        idx = filename.find('image_') + len('image_')
+        file_degree = int(re.search(r'\d+', filename[idx:]).group())
+        if file_degree in degree_list:
+            images_by_degree[file_degree].append(x)
+
+    return images_by_degree
+
 
 class AdaptationData(object):
     CLASS_NAMES = ['A', 'B']
@@ -122,3 +155,4 @@ class AdaptationData(object):
             shuffle=False)
 
         return adaptation_generator
+

@@ -8,7 +8,7 @@ INPUT_VECTOR_SIZE = 512
 INPUT_DIMENSION = 3
 
 # Model hyperparameters
-EPOCH_AMOUNT = 20
+EPOCH_AMOUNT = 15
 BATCH_SIZE = 32
 SPLIT_SIZE = 0.7
 LOSS_FUNCTION = 'categorical_crossentropy'

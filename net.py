@@ -1,7 +1,6 @@
 from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import Adam
 
-#TODO: how to add regularization term to learning (is it BatchNormalization?)
 class AdaptationNet(object):
     @staticmethod
     def create_model(input_shape, num_classes, loss_function, metrics):
