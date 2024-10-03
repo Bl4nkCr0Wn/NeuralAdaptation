@@ -1,4 +1,4 @@
-
+import net
 #Environment Var
 GENERATED_IMAGES_DIR = r'D:\CS\SummerProject\NeuralAdaptation\stylegan2-ada-pytorch\Results\generated_faces'
 BASE_WORK_DIR = r'D:\CS\SummerProject\tmp'

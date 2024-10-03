@@ -17,15 +17,21 @@ def load_data():
     data = preprocess.AdaptationData(config.BASE_WORK_DIR)
     return data
 
-def train_new_model(data):
+def train_new_model(data, pretrained = False):
     train_generator, validation_generator,\
         test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
 
-    # prepare model architecture
-    model = net.AdaptationNet.create_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-                                           len(data.CLASS_NAMES),
-                                           config.LOSS_FUNCTION,
-                                           config.METRICS)
+    if not pretrained:
+        # prepare model architecture
+        model = net.AdaptationNet.create_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+                                               len(data.CLASS_NAMES),
+                                               config.LOSS_FUNCTION,
+                                               config.METRICS)
+    else:
+        model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+                                                          len(data.CLASS_NAMES),
+                                                          config.LOSS_FUNCTION,
+                                                          config.METRICS)
 
     # train model
     history = model.fit(
@@ -117,25 +123,26 @@ def main():
     # data = prepare_new_data()
     data = load_data()
 
-    # model, history = train_new_model(data)
-    # model.save('alexnet_face_classifier_2.h5')
-    model = load_model('alexnet_face_classifier_1.h5')
+    model, history = train_new_model(data)
+    # model, history = train_new_model(data, pretrained=True)
+    model.save('alexnet_face_classifier_with_regularization.h5')
+    # model = load_model('alexnet_face_classifier_1.h5')
 
     # model = supervised_rotate_fit(model, data, 179, 1)
     # loss, acc = test_rotated_model(model, data)
 
-    angle_range = 15
-    ranges = range(1, 179, angle_range)
-    for angle in ranges:
-        # model = self_supervised_rotate_fit(model, data, 15, angle)
-        if angle + angle_range > 180:
-            angle_range = 180 - angle
-        model = supervised_rotate_fit(model, data, angle_range, angle)
-        loss, acc = test_rotated_model(model, data)
-        if acc < 0.5:
-            print(f'Flipping at {angle}')
-
-    model.save('supervised_rotated_alexnet_face_classifier_5.h5')
+    # angle_range = 15
+    # ranges = range(1, 179, angle_range)
+    # for angle in ranges:
+    #     # model = self_supervised_rotate_fit(model, data, 15, angle)
+    #     if angle + angle_range > 180:
+    #         angle_range = 180 - angle
+    #     model = supervised_rotate_fit(model, data, angle_range, angle)
+    #     loss, acc = test_rotated_model(model, data)
+    #     if acc < 0.5:
+    #         print(f'Flipping at {angle}')
+    #
+    # model.save('supervised_rotated_alexnet_face_classifier_5.h5')
     return
 
 if __name__ == '__main__':

@@ -1,10 +1,38 @@
 from tensorflow.keras import layers, models
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.applications import EfficientNetB0
+import tensorflow as tf
 
 class AdaptationNet(object):
     @staticmethod
     def create_model(input_shape, num_classes, loss_function, metrics):
         model = _alex_net(input_shape, num_classes)
+
+        def l2_regularized_loss(y_true, y_pred):
+            loss = tf.keras.losses.mean_squared_error(y_true=y_true, y_pred=y_pred)
+            # regularization_loss = tf.reduce_sum(tf.square(model.trainable_weights))
+            regularization_loss = tf.add_n([ tf.nn.l2_loss(v) for v in model.trainable_weights])
+            return loss + 0.5 * regularization_loss
+
+        model.compile(optimizer=Adam(), loss=l2_regularized_loss, metrics=metrics)
+        return model
+
+    @staticmethod
+    def create_pretrained_model(input_shape, num_classes, loss_function, metrics):
+        base_model = EfficientNetB0(weights='imagenet', include_top=False, input_shape=input_shape)
+        for layer in base_model.layers:
+            layer.trainable = False
+
+        x = base_model.output
+
+        # trainable Fully Connected Layer
+        x = layers.Flatten()(x)
+        x = layers.Dense(1024, activation='relu')(x)# NOTE: compared to untrained network, here there is no dropout
+
+        # Output Layer
+        x = layers.Dense(num_classes, activation='softmax')(x)
+
+        model = models.Model(inputs=base_model.input, outputs=x)
         model.compile(optimizer=Adam(), loss=loss_function, metrics=metrics)
         return model
 
