@@ -3,6 +3,8 @@ from numpy import array
 import pandas as pd
 from tensorflow.keras.models import load_model
 from sklearn.metrics import accuracy_score
+from tensorflow.python.keras.callbacks import EarlyStopping
+import matplotlib.pyplot as plt
 
 import preprocess
 import net
@@ -18,21 +20,9 @@ def load_data():
     data = preprocess.AdaptationData(config.BASE_WORK_DIR)
     return data
 
-def train_new_model(data, pretrained = False):
+def train_new_model(data, model):
     train_generator, validation_generator,\
         test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
-
-    if not pretrained:
-        # prepare model architecture
-        model = net.AdaptationNet.create_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-                                               len(data.CLASS_NAMES),
-                                               config.LOSS_FUNCTION,
-                                               config.METRICS)
-    else:
-        model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-                                                          len(data.CLASS_NAMES),
-                                                          config.LOSS_FUNCTION,
-                                                          config.METRICS)
 
     # train model
     history = model.fit(
@@ -40,7 +30,8 @@ def train_new_model(data, pretrained = False):
         steps_per_epoch=train_generator.samples // train_generator.batch_size,
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
-        epochs=config.EPOCH_AMOUNT
+        epochs=config.EPOCH_AMOUNT,
+        callbacks=[EarlyStopping(patience=20, monitor='val_accuracy', restore_best_weights=True)]
     )
 
     model.evaluate(test_generator)
@@ -48,11 +39,9 @@ def train_new_model(data, pretrained = False):
     return model, results
 
 def test_model(model, data):
-    # Test original face classes classification after rotation.
+    # Test original face classes classification
     train_generator, validation_generator, \
         test_generator = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
-    print('Evaluate model on validation data:')
-    model.evaluate(validation_generator)
     print('Evaluate model on test data:')
     return model.evaluate(test_generator)
 
@@ -77,6 +66,43 @@ def self_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
         y = model.predict(x)
         print('Predicted values are: {}'.format(y))
         model.fit(x, y, epochs=10)
+
+    return model
+
+def semi_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
+    # Index moving degree images by degree
+    adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
+
+    # Train each image class alternatively
+    degree_sequence = []
+    for i in range(angle_range_start, angle_range_start + angle_range):
+        degree_sequence.append(135 + i)
+        degree_sequence.append((315 + i)%360)
+
+    for i in range(0, len(degree_sequence), 2):
+        images_by_degree = preprocess.get_images_by_degree(adaptation_generator, [degree_sequence[i], degree_sequence[i+1]])
+        zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
+        alternated_img = [item for pair in zipped for item in pair]
+        x = np.concatenate(alternated_img, axis=0)
+
+        print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
+        for i in range(10):
+            y = model.predict(x)
+            print('Predicted values are: {}'.format(y))
+            classes = np.argmax(y, axis=1)
+            class_probs = [prob[cls] for cls, prob in zip(classes, y)]
+            mask = np.array([1 if prob >= 0.99 else 0 for prob in class_probs])
+            print('Mask is: {}'.format(mask))
+            print ('Classes are: {}'.format(classes))
+            print('augmenting probs..')
+            y = []
+            for c in classes:
+                if c == 0:
+                    y.append([1.0, 0.0])
+                else:
+                    y.append([0.0, 1.0])
+            y = array(y)
+            model.fit(x[mask], y[mask], epochs=1)#10
 
     return model
 
@@ -108,14 +134,17 @@ def supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
 
 def test_model_by_class(model, data):
     dg,vg,tg = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
-    y_pred = model.predict(tg)
-    pred = np.argmax(y_pred, axis=1)
+
+    pred = []
     test = []
     for x, y in tg:
+        y_pred = model.predict(x)
+        pred.extend(np.argmax(y_pred, axis=1))
         test.extend(np.argmax(y, axis=1))
         if len(test) >= tg.samples:
             break
     test = np.array(test)
+    pred = np.array(pred)
     mask = test == 0
     print('Accuracy on class 0: {}'.format(accuracy_score(test[mask], pred[mask])))
     mask = test == 1
@@ -125,22 +154,51 @@ def main():
     # data = prepare_new_data()
     data = load_data()
 
-    # model, history = train_new_model(data)
-    # model, history = train_new_model(data, pretrained=True)
-    # model.save('alexnet_face_classifier_with_reg.h5')
+    # prepare model architecture
+    # model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #                                                   len(data.CLASS_NAMES),
+    #                                                   config.LOSS_FUNCTION,
+    #                                                   config.METRICS)
+    #
+    model = net.AdaptationNet.create_regularized_alexnet(
+        (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+        len(data.CLASS_NAMES),
+        config.LOSS_FUNCTION,
+        config.METRICS)
+    #
+    # model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #                                        len(data.CLASS_NAMES),
+    #                                        config.LOSS_FUNCTION,
+    #                                        config.METRICS)
 
-    model = load_model('alexnet_face_classifier_no_reg.h5')
+    # model = net.AdaptationNet.create_resnet(
+    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #     len(data.CLASS_NAMES),
+    #     config.LOSS_FUNCTION,
+    #     config.METRICS)
 
-    angle_range = 15
-    ranges = range(1, 179, angle_range)
-    for angle in ranges:
-        if angle + angle_range > 180:
-            angle_range = 180 - angle
-        # model = supervised_rotate_fit(model, data, angle_range, angle)
-        model = self_supervised_rotate_fit(model, data, angle_range, angle)
-        loss, acc = test_model(model, data)
+    model, history = train_new_model(data, model)
+    model.save('augmented_regularized_alexnet_face_classifier.h5')
+    # model = load_model('augmented_alexnet_face_classifier.h5')
+    test_model_by_class(model, data)
+    test_model(model, data)
+    history.to_csv('augmented_regularized_alexnet_face_classifier.csv', index=False)
 
-    model.save('selfsupervised_rotated_alexnet_face_classifier_5_no_reg.h5')
+    history.loc[:, ['loss', 'val_loss']].plot()
+    history.loc[:, ['accuracy', 'val_accuracy']].plot()
+    plt.show()
+
+    # angle_range = 15
+    # ranges = range(1, 179, angle_range)
+    # for angle in ranges:
+    #     if angle + angle_range > 180:
+    #         angle_range = 180 - angle
+    #     model = supervised_rotate_fit(model, data, angle_range, angle)
+    #     # model = self_supervised_rotate_fit(model, data, angle_range, angle)
+    #     # model = semi_supervised_rotate_fit(model, data, angle_range, angle)
+    #     test_model_by_class(model, data)
+    #
+    # model.save('supervised_rotated_augmented_alexnet_face_classifier.h5')
     return
 
 if __name__ == '__main__':

@@ -1,6 +1,8 @@
 import os
 from shutil import copyfile, rmtree
 import random
+
+import keras.applications.resnet
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import re
 
@@ -97,8 +99,8 @@ class AdaptationData(object):
             split = int(split_size * len(shuffled_files))  # the training split casted into int for numeric rounding
             train = shuffled_files[:split]  # training split
             split_valid_test = int(split + (len(shuffled_files) - split) / 2)
-            validation = shuffled_files[split:split_valid_test]  # validation split
-            test = shuffled_files[split_valid_test:]
+            validation = shuffled_files[split:]#shuffled_files[split:split_valid_test]  # validation split
+            test = shuffled_files[split:]#shuffled_files[split_valid_test:]
 
             for element in train:
                 copyfile(os.path.join(self._classes_dir, c, element),
@@ -121,9 +123,15 @@ class AdaptationData(object):
                                             len(os.listdir(os.path.join(self._test_dir, c)))))
 
     def create_generators(self, input_size, batch_size):
-        train_datagen = ImageDataGenerator(rescale=1./255)
-        validation_datagen = ImageDataGenerator(rescale=1./255)
-        test_datagen = ImageDataGenerator(rescale=1. / 255.)
+        train_datagen = ImageDataGenerator(rescale=1./255,
+                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           )#, preprocessing_function=keras.applications.resnet.preprocess_input)
+        validation_datagen = ImageDataGenerator(rescale=1./255,
+                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           )#, preprocessing_function=keras.applications.resnet.preprocess_input)
+        test_datagen = ImageDataGenerator(rescale=1./255,
+                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           )#, preprocessing_function=keras.applications.resnet.preprocess_input)
 
         train_generator = train_datagen.flow_from_directory(
             self._training_dir,
