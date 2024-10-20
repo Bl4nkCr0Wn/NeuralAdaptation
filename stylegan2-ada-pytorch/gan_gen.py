@@ -18,7 +18,7 @@ import os
 import shutil
 import time
 from tqdm import tqdm
-#from google.colab import files
+from google.colab import files
 #from IPython.display import display  # Import display for showing images
 
 import functools
@@ -184,7 +184,7 @@ def main(model_path, base_save_path, resolution):
     zipped_file_path = os.path.join('Results', f"{base_save_path}.zip")
     shutil.move(f"{results_dir}.zip", zipped_file_path)
 
-    #files.download(zipped_file_path)
+    files.download(zipped_file_path)
 
 # Parameters
 model_path = 'ffhq.pkl'
