@@ -31,7 +31,7 @@ def train_new_model(data, model):
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
         epochs=config.EPOCH_AMOUNT,
-        callbacks=[EarlyStopping(patience=20, monitor='val_accuracy', restore_best_weights=True)]
+        callbacks=[EarlyStopping(patience=10, monitor='val_binary_accuracy', restore_best_weights=True)]
     )
 
     model.evaluate(test_generator)
@@ -151,26 +151,28 @@ def test_model_by_class(model, data):
     print('Accuracy on class 1: {}'.format(accuracy_score(test[mask], pred[mask])))
 
 def main():
-    # data = prepare_new_data()
-    data = load_data()
+    RUN_NAME = 'alexnet'
+    data = prepare_new_data()
+    # data = load_data()
 
     # prepare model architecture
     # model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
     #                                                   len(data.CLASS_NAMES),
     #                                                   config.LOSS_FUNCTION,
     #                                                   config.METRICS)
-    #
-    model = net.AdaptationNet.create_regularized_alexnet(
-        (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-        len(data.CLASS_NAMES),
-        config.LOSS_FUNCTION,
-        config.METRICS)
-    #
-    # model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #                                        len(data.CLASS_NAMES),
-    #                                        config.LOSS_FUNCTION,
-    #                                        config.METRICS)
 
+    # model = net.AdaptationNet.create_regularized_alexnet(
+    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #     len(data.CLASS_NAMES),
+    #     config.LOSS_FUNCTION,
+    #     config.METRICS)
+
+    model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+                                           len(data.CLASS_NAMES),
+                                           config.LOSS_FUNCTION,
+                                           config.METRICS)
+
+    # resnet requires added preprocessing function to ImageDataGenerator
     # model = net.AdaptationNet.create_resnet(
     #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
     #     len(data.CLASS_NAMES),
@@ -178,27 +180,29 @@ def main():
     #     config.METRICS)
 
     model, history = train_new_model(data, model)
-    model.save('augmented_regularized_alexnet_face_classifier.h5')
+    model.save(RUN_NAME+'_face_classifier.h5')
+    history.to_csv(RUN_NAME + '_train_history.csv', index=False)
+
     # model = load_model('augmented_alexnet_face_classifier.h5')
     test_model_by_class(model, data)
     test_model(model, data)
-    history.to_csv('augmented_regularized_alexnet_face_classifier.csv', index=False)
+
 
     history.loc[:, ['loss', 'val_loss']].plot()
-    history.loc[:, ['accuracy', 'val_accuracy']].plot()
+    history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
     plt.show()
 
-    # angle_range = 15
-    # ranges = range(1, 179, angle_range)
-    # for angle in ranges:
-    #     if angle + angle_range > 180:
-    #         angle_range = 180 - angle
-    #     model = supervised_rotate_fit(model, data, angle_range, angle)
-    #     # model = self_supervised_rotate_fit(model, data, angle_range, angle)
-    #     # model = semi_supervised_rotate_fit(model, data, angle_range, angle)
-    #     test_model_by_class(model, data)
-    #
-    # model.save('supervised_rotated_augmented_alexnet_face_classifier.h5')
+    angle_range = 15
+    ranges = range(1, 179, angle_range)
+    for angle in ranges:
+        if angle + angle_range > 180:
+            angle_range = 180 - angle
+        model = supervised_rotate_fit(model, data, angle_range, angle)
+        # model = self_supervised_rotate_fit(model, data, angle_range, angle)
+        # model = semi_supervised_rotate_fit(model, data, angle_range, angle)
+        test_model_by_class(model, data)
+
+    model.save(RUN_NAME + '_supervised_rotation.h5')
     return
 
 if __name__ == '__main__':

@@ -124,13 +124,13 @@ class AdaptationData(object):
 
     def create_generators(self, input_size, batch_size):
         train_datagen = ImageDataGenerator(rescale=1./255,
-                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           #horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
                                            )#, preprocessing_function=keras.applications.resnet.preprocess_input)
         validation_datagen = ImageDataGenerator(rescale=1./255,
-                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           #horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
                                            )#, preprocessing_function=keras.applications.resnet.preprocess_input)
         test_datagen = ImageDataGenerator(rescale=1./255,
-                                           horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
+                                           #horizontal_flip=True, rotation_range=0.2, width_shift_range=0.2,
                                            )#, preprocessing_function=keras.applications.resnet.preprocess_input)
 
         train_generator = train_datagen.flow_from_directory(
