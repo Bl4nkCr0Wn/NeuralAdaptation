@@ -184,6 +184,7 @@ def main():
     history.to_csv(RUN_NAME + '_train_history.csv', index=False)
 
     # model = load_model('augmented_alexnet_face_classifier.h5')
+    # compile model on colab
     test_model_by_class(model, data)
     test_model(model, data)
 

@@ -173,13 +173,13 @@ class AdaptationNet(object):
             
         # Dynamically add L2 regularization to each layer
         for i, layer in enumerate(model.layers):
-            l2_strength = get_l2_strength(layer)
-            if l2_strength > 0:
-                # Rebuild the layer with L2 regularization
-                if isinstance(layer, layers.Conv2D) or isinstance(layer, layers.Dense):
-                    model.layers[i] = layer.__class__(
-                        **{**layer.get_config(), 'kernel_regularizer': regularizers.l2(l2_strength)}
-                    )
+            if isinstance(layer, layers.Conv2D) or isinstance(layer, layers.Dense):
+                l2_strength = get_l2_strength(layer)
+                if l2_strength > 0:
+                  # Rebuild the layer with L2 regularization
+                  model.layers[i] = layer.__class__(
+                      **{**layer.get_config(), 'kernel_regularizer': regularizers.l2(l2_strength)}
+                  )
 
         return model
 

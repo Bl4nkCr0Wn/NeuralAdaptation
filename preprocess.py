@@ -27,8 +27,10 @@ def get_images_by_degree(adaptation_generator, degree_list):
     for degree in degree_list:
         images_by_degree[degree] = []
 
-    for i in range(len(adaptation_generator)):
-        x = adaptation_generator.next()
+    for i, x in enumerate(adaptation_generator):
+        if i >= len(adaptation_generator):
+            break
+        # x = next(adaptation_generator)
         filename = adaptation_generator.filenames[i]
         idx = filename.find('image_') + len('image_')
         file_degree = int(re.search(r'\d+', filename[idx:]).group())
