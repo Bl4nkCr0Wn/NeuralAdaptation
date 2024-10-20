@@ -114,34 +114,34 @@ class AdaptationNet(object):
 
         # 1st Convolutional Layer
         model.add(
-            layers.Conv2D(filters=96, input_shape=input_shape, kernel_size=(11, 11), strides=(4, 4), padding='valid',
-                          kernel_regularizer = regularizers.l2(L2_strength)))
+            layers.Conv2D(filters=96, input_shape=input_shape, kernel_size=(11, 11), strides=(4, 4), padding='valid',))
+                          # kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.BatchNormalization())
         model.add(layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='valid'))
 
         # 2nd Convolutional Layer
-        model.add(layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), padding='same',
-                                kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), padding='same',))
+                                # kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.BatchNormalization())
         model.add(layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='valid'))
 
         # 3rd Convolutional Layer
-        model.add(layers.Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                                kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='same',))
+                                # kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.BatchNormalization())
 
         # 4th Convolutional Layer
-        model.add(layers.Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                                kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Conv2D(filters=384, kernel_size=(3, 3), strides=(1, 1), padding='same',))
+                                # kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.BatchNormalization())
 
         # 5th Convolutional Layer
-        model.add(layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same',
-                                kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), padding='same',))
+                                # kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.BatchNormalization())
         model.add(layers.MaxPooling2D(pool_size=(3, 3), strides=(2, 2), padding='valid'))
@@ -150,18 +150,36 @@ class AdaptationNet(object):
         model.add(layers.Flatten())
 
         # 1st Fully Connected Layer
-        model.add(layers.Dense(4096, kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Dense(4096,))# kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.Dropout(0.5))
 
         # 2nd Fully Connected Layer
-        model.add(layers.Dense(4096, kernel_regularizer = regularizers.l2(L2_strength)))
+        model.add(layers.Dense(4096,))# kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('relu'))
         model.add(layers.Dropout(0.5))
 
         # Output Layer
-        model.add(layers.Dense(num_classes))
+        model.add(layers.Dense(num_classes))# kernel_regularizer = regularizers.l2(L2_strength)))
         model.add(layers.Activation('softmax'))
+
+
+        # Define a function to calculate L2 strength based on number of weights
+        def get_l2_strength(model_layer):
+            num_weights = model_layer.count_params()  # Total number of weights in the layer
+            if num_weights > 0:  # Only apply regularization if there are trainable weights
+                return 1.0 / num_weights
+            return 
+            
+        # Dynamically add L2 regularization to each layer
+        for i, layer in enumerate(model.layers):
+            l2_strength = get_l2_strength(layer)
+            if l2_strength > 0:
+                # Rebuild the layer with L2 regularization
+                if isinstance(layer, layers.Conv2D) or isinstance(layer, layers.Dense):
+                    model.layers[i] = layer.__class__(
+                        **{**layer.get_config(), 'kernel_regularizer': regularizers.l2(l2_strength)}
+                    )
 
         return model
 
