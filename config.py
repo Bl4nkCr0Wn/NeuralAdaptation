@@ -1,8 +1,8 @@
 import os
 
 #Environment Var
-GENERATED_IMAGES_DIR = os.getcwd() + r'\stylegan2-ada-pytorch\Results\generated_faces'
-BASE_WORK_DIR = os.getcwd() + r'\tmp'
+GENERATED_IMAGES_DIR = os.getcwd() + os.sep + 'stylegan2-ada-pytorch'+ os.sep +'Results'+ os.sep +'generated_faces'
+BASE_WORK_DIR = os.getcwd() + os.sep + 'tmp'
 
 # Images information
 INPUT_VECTOR_SIZE = 512#224
