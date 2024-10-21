@@ -45,9 +45,9 @@ def test_model(model, data):
     print('Evaluate model on test data:')
     return model.evaluate(test_generator)
 
-def self_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
+def self_supervised_rotate_fit(model, data, input_size, angle_range, angle_range_start = 1):
     # Index moving degree images by degree
-    adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
+    # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
     # images_by_degree = preprocess.get_degree_images_dictionary(adaptation_generator)
 
     # Train each image class alternatively
@@ -57,7 +57,7 @@ def self_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
         degree_sequence.append((315 + i)%360)
 
     for i in range(0, len(degree_sequence), 2):
-        images_by_degree = preprocess.get_images_by_degree(adaptation_generator, [degree_sequence[i], degree_sequence[i+1]])
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
         alternated_img = [item for pair in zipped for item in pair]
         x = np.concatenate(alternated_img, axis=0)
@@ -69,9 +69,9 @@ def self_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
 
     return model
 
-def semi_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
+def semi_supervised_rotate_fit(model, data, input_size, angle_range, angle_range_start = 1):
     # Index moving degree images by degree
-    adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
+    # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
 
     # Train each image class alternatively
     degree_sequence = []
@@ -80,7 +80,7 @@ def semi_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
         degree_sequence.append((315 + i)%360)
 
     for i in range(0, len(degree_sequence), 2):
-        images_by_degree = preprocess.get_images_by_degree(adaptation_generator, [degree_sequence[i], degree_sequence[i+1]])
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
         alternated_img = [item for pair in zipped for item in pair]
         x = np.concatenate(alternated_img, axis=0)
@@ -106,9 +106,9 @@ def semi_supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
 
     return model
 
-def supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
+def supervised_rotate_fit(model, data, input_size, angle_range, angle_range_start = 1):
     # Index moving degree images by degree
-    adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
+    # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
     # images_by_degree = preprocess.get_degree_images_dictionary(adaptation_generator)
 
     # Train each image class alternatively
@@ -120,7 +120,7 @@ def supervised_rotate_fit(model, data, angle_range, angle_range_start = 1):
     fit = array([[1.0, 0.0]])# A class
     alternate_fit = array([[0.0, 1.0]])# B class
     for i in range(0, len(degree_sequence), 2):
-        images_by_degree = preprocess.get_images_by_degree(adaptation_generator, [degree_sequence[i], degree_sequence[i+1]])
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
         alternated_img = [item for pair in zipped for item in pair]
         x = np.concatenate(alternated_img, axis=0)
@@ -151,9 +151,9 @@ def test_model_by_class(model, data):
     print('Accuracy on class 1: {}'.format(accuracy_score(test[mask], pred[mask])))
 
 def main():
-    RUN_NAME = 'alexnet'
-    data = prepare_new_data()
-    # data = load_data()
+    RUN_NAME = 'regularized_alexnet_small_dataset'
+    # data = prepare_new_data()
+    data = load_data()
 
     # prepare model architecture
     # model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
@@ -167,10 +167,10 @@ def main():
     #     config.LOSS_FUNCTION,
     #     config.METRICS)
 
-    model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-                                           len(data.CLASS_NAMES),
-                                           config.LOSS_FUNCTION,
-                                           config.METRICS)
+    # model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #                                        len(data.CLASS_NAMES),
+    #                                        config.LOSS_FUNCTION,
+    #                                        config.METRICS)
 
     # resnet requires added preprocessing function to ImageDataGenerator
     # model = net.AdaptationNet.create_resnet(
@@ -179,28 +179,27 @@ def main():
     #     config.LOSS_FUNCTION,
     #     config.METRICS)
 
-    model, history = train_new_model(data, model)
-    model.save(RUN_NAME+'_face_classifier.h5')
-    history.to_csv(RUN_NAME + '_train_history.csv', index=False)
+    # model, history = train_new_model(data, model)
+    # model.save(RUN_NAME+'_face_classifier.h5')
+    # history.to_csv(RUN_NAME + '_train_history.csv', index=False)
 
-    # model = load_model('augmented_alexnet_face_classifier.h5')
+    model = load_model(RUN_NAME+'_face_classifier.h5')
     # compile model on colab
-    test_model_by_class(model, data)
-    test_model(model, data)
-
-
-    history.loc[:, ['loss', 'val_loss']].plot()
-    history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
-    plt.show()
+    # test_model_by_class(model, data)
+    # test_model(model, data)
+    #
+    # history.loc[:, ['loss', 'val_loss']].plot()
+    # history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
+    # plt.show()
 
     angle_range = 15
     ranges = range(1, 179, angle_range)
     for angle in ranges:
         if angle + angle_range > 180:
             angle_range = 180 - angle
-        model = supervised_rotate_fit(model, data, angle_range, angle)
-        # model = self_supervised_rotate_fit(model, data, angle_range, angle)
-        # model = semi_supervised_rotate_fit(model, data, angle_range, angle)
+        model = supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
+        # model = self_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
+        # model = semi_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
         test_model_by_class(model, data)
 
     model.save(RUN_NAME + '_supervised_rotation.h5')

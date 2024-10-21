@@ -3,39 +3,31 @@ from shutil import copyfile, rmtree
 import random
 
 import keras.applications.resnet
+from tensorflow.keras.preprocessing import image
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import re
+import numpy as np
 
 
-def get_degree_images_dictionary(adaptation_generator):
-    images_by_degree = {}
-    for i in range(len(adaptation_generator)):
-        x = adaptation_generator.next()
-        filename = adaptation_generator.filenames[i]
-        idx = filename.find('image_') + len('image_')
-        file_degree = int(re.search(r'\d+', filename[idx:]).group())
-        if file_degree not in images_by_degree:
-            images_by_degree[file_degree] = [x]
-        else:
-            images_by_degree[file_degree].append(x)
+# def get_degree_images_dictionary(adaptation_generator):
+#     images_by_degree = {}
+#     for i in range(len(adaptation_generator)):
+#         x = adaptation_generator.next()
+#         filename = adaptation_generator.filenames[i]
+#         idx = filename.find('image_') + len('image_')
+#         file_degree = int(re.search(r'\d+', filename[idx:]).group())
+#         if file_degree not in images_by_degree:
+#             images_by_degree[file_degree] = [x]
+#         else:
+#             images_by_degree[file_degree].append(x)
+#
+#     return images_by_degree
 
-    return images_by_degree
 
-
-def get_images_by_degree(adaptation_generator, degree_list):
+def get_images_by_degree(data, input_size, degree_list):
     images_by_degree = {}
     for degree in degree_list:
-        images_by_degree[degree] = []
-
-    for i, x in enumerate(adaptation_generator):
-        if i >= len(adaptation_generator):
-            break
-        # x = next(adaptation_generator)
-        filename = adaptation_generator.filenames[i]
-        idx = filename.find('image_') + len('image_')
-        file_degree = int(re.search(r'\d+', filename[idx:]).group())
-        if file_degree in degree_list:
-            images_by_degree[file_degree].append(x)
+        images_by_degree[degree] = data.get_adaptation_images(input_size, degree)
 
     return images_by_degree
 
@@ -70,7 +62,7 @@ class AdaptationData(object):
             elif file.endswith('.png') and 'image_315' in file:
                 copyfile(os.path.join(generated_images_dir, file), os.path.join(b_class_dir, file))
             elif file.endswith('.png'):
-                copyfile(os.path.join(generated_images_dir, file), os.path.join(self._adaptation_dir, file))
+                copyfile(os.path.join(generated_images_dir, file), os.path.join(self._adaptation_dir, file[file.find('_'):]))#remove image index
 
         print('Created {} class with {} images.\n'
               'Created {} class with {} images.\n'
@@ -155,14 +147,33 @@ class AdaptationData(object):
 
         return train_generator, validation_generator, test_generator
 
-    def create_adaptation_generator(self, input_size):
-        adaptation_datagen = ImageDataGenerator(rescale=1. / 255.)
-        adaptation_generator = adaptation_datagen.flow_from_directory(
-            directory=os.path.dirname(self._adaptation_dir),
-            target_size=(input_size, input_size),
-            batch_size=1,
-            class_mode=None,
-            shuffle=False)
+    # def create_adaptation_generator(self, input_size):
+    #     adaptation_datagen = ImageDataGenerator(rescale=1. / 255.)
+    #     adaptation_generator = adaptation_datagen.flow_from_directory(
+    #         directory=os.path.dirname(self._adaptation_dir),
+    #         target_size=(input_size, input_size),
+    #         batch_size=1,
+    #         class_mode=None,
+    #         shuffle=False)
+    #
+    #     return adaptation_generator
 
-        return adaptation_generator
+    def get_adaptation_images(self, input_size, degree):
+        def load_img(path):
+            img = image.load_img(path, target_size=(input_size, input_size), )  # Adjust target_size as needed for your model
+            img = image.img_to_array(img)
+            # rescale
+            img /= 255.0
+            # Expand the dimensions to add a batch dimension (model expects a batch of images)
+            img = np.expand_dims(img, axis=0)
+            return img
 
+        images = []
+        counter = 1
+        filename = '_image_' + str(degree) + '.0_' + str(counter) + '.png'
+        while os.path.exists(os.path.join(self._adaptation_dir, filename)):
+            images.append(load_img(os.path.join(self._adaptation_dir, filename)))
+            counter += 1
+            filename = '_image_' + str(degree) + '.0_' + str(counter) + '.png'
+
+        return images
