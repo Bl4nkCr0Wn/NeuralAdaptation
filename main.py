@@ -69,24 +69,24 @@ def self_supervised_rotate_fit(model, data, input_size, angle_range, angle_range
 
     return model
 
-def semi_supervised_rotate_fit(model, data, input_size, angle_range, angle_range_start = 1):
+def semi_supervised_rotate_fit(model, data, input_size, degree_generator=range(1, 180, 1)):
     # Index moving degree images by degree
     # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
 
     # Train each image class alternatively
     degree_sequence = []
-    for i in range(angle_range_start, angle_range_start + angle_range):
-        degree_sequence.append(135 + i)
-        degree_sequence.append((315 + i)%360)
+    for i in degree_generator:
+        degree_sequence.append(config.SPECIAL_DEGREES[0] + i)
+        degree_sequence.append((config.SPECIAL_DEGREES[1] + i)%360)
 
     for i in range(0, len(degree_sequence), 2):
-        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]], config.THETA_AMOUNT)
         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
         alternated_img = [item for pair in zipped for item in pair]
         x = np.concatenate(alternated_img, axis=0)
 
         print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
-        for i in range(10):
+        for j in range(1):
             y = model.predict(x)
             print('Predicted values are: {}'.format(y))
             classes = np.argmax(y, axis=1)
@@ -146,14 +146,42 @@ def test_model_by_class(model, data):
     test = np.array(test)
     pred = np.array(pred)
     mask = test == 0
-    print('Accuracy on class 0: {}'.format(accuracy_score(test[mask], pred[mask])))
+    classA_score = accuracy_score(test[mask], pred[mask])
+    print('Accuracy on class 0: {}'.format(classA_score))
     mask = test == 1
-    print('Accuracy on class 1: {}'.format(accuracy_score(test[mask], pred[mask])))
+    classB_score = accuracy_score(test[mask], pred[mask])
+    print('Accuracy on class 1: {}'.format(classB_score))
+    return classA_score, classB_score
+
+def calc_dividing_plane(model, data, input_size):
+    history = {'degree' : [], 'classA' : [], 'classB' : []}
+    for degree in range(0, 360, config.THETA_INCREMENT):
+        degree = (config.SPECIAL_DEGREES[0] + degree) % 360
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree], config.THETA_AMOUNT)
+        x = np.concatenate(images_by_degree[degree], axis=0)
+        print('Fitting {}'.format(degree))
+        y = model.predict(x)
+        print('Predicted values are: {}'.format(y))
+        classes = np.argmax(y, axis=1)
+        history['degree'].append(degree)
+        history['classA'].append(np.sum(classes == 0))
+        history['classB'].append(np.sum(classes == 1))
+    df = pd.DataFrame(history)
+    return df
+
+def show_plane(dividing_plane, name):
+    # Create the grouped bar plot
+    dividing_plane.plot(x='degree', rot=0)
+    plt.title('Dividing Plane')
+    plt.xlabel('Degree')
+    plt.ylabel('Classifications')
+    plt.savefig(name)
+    plt.show()
 
 def main():
     RUN_NAME = 'regularized_alexnet_small_dataset'
-    # data = prepare_new_data()
-    data = load_data()
+    data = prepare_new_data()
+    # data = load_data()
 
     # prepare model architecture
     # model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
@@ -187,22 +215,44 @@ def main():
     # compile model on colab
     # test_model_by_class(model, data)
     # test_model(model, data)
-    #
+
     # history.loc[:, ['loss', 'val_loss']].plot()
     # history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
     # plt.show()
 
-    angle_range = 15
+    from tensorflow.keras.optimizers import Adam
+    model.compile(optimizer=Adam(learning_rate=1, beta_1=0.1, beta_2=0.1), loss=config.LOSS_FUNCTION, metrics=config.METRICS)
+    ROTATION_TYPE = 'semi'# 'supervised', 'self'
+    angle_range = 30# 15
     ranges = range(1, 179, angle_range)
+    # scoreA_res = []
+    # scoreB_res = []
+    res = calc_dividing_plane(model, data,
+                              config.INPUT_VECTOR_SIZE)  # requires adding special angles to adaptation data
+    # res.to_csv(RUN_NAME + '_dividing_plane_angle_' + str(1) + '.csv')
+    show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(1) + '.png')
     for angle in ranges:
         if angle + angle_range > 180:
             angle_range = 180 - angle
-        model = supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
-        # model = self_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
-        # model = semi_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle_range, angle)
-        test_model_by_class(model, data)
+        if ROTATION_TYPE == 'self':
+            model = self_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, range(angle, angle + angle_range, config.THETA_INCREMENT))
+        elif ROTATION_TYPE == 'semi':
+            model = semi_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, range(angle, angle + angle_range, config.THETA_INCREMENT))
+        else:
+            model = supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, range(angle, angle + angle_range, config.THETA_INCREMENT))
+        # scoreA, scoreB = test_model_by_class(model, data)
+        # scoreA_res.append(scoreA)
+        # scoreB_res.append(scoreB)
+        res = calc_dividing_plane(model, data,
+                                  config.INPUT_VECTOR_SIZE)  # requires adding special angles to adaptation data
+        # res.to_csv(RUN_NAME + '_dividing_plane_angle_'+ str(angle) +'.csv')
+        show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(angle + angle_range) + '.png')
 
-    model.save(RUN_NAME + '_supervised_rotation.h5')
+    # model.save(RUN_NAME + '_'+ ROTATION_TYPE + '_rotation.h5')
+    # rotation_res = pd.DataFrame({'scoreA' : scoreA_res, 'scoreB' : scoreB_res }, index = list(ranges))
+    # rotation_res.to_csv(RUN_NAME + '_'+ ROTATION_TYPE + '_rotation_history.csv', index=False)
+    # rotation_res.plot()
+    # plt.show()
     return
 
 if __name__ == '__main__':

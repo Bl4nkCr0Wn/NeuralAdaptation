@@ -169,7 +169,7 @@ def main(model_path, base_save_path, resolution):
         f"Psi: {psi}",
         f"Initial value for all parameters: {initial_value}",
         f"Radius factor: {radius}",
-        f"User input: n={n}, theta_increment={theta_increment}, noise_variance_special={noise_variance_special}, noise_variance_other={noise_variance_other}"
+        f"User input: n={n}, theta_increment={theta_increment}, amount per degree={theta_amount} noise_variance_special={noise_variance_special}, noise_variance_other={noise_variance_other}"
     ]
 
     with open(os.path.join(results_dir, 'summary.txt'), 'w') as f:
