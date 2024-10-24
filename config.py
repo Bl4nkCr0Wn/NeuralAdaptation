@@ -15,5 +15,5 @@ SPECIAL_DEGREES = [135, 315]
 EPOCH_AMOUNT = 100
 BATCH_SIZE = 32
 SPLIT_SIZE = 0.8
-LOSS_FUNCTION = 'binary_crossentropy'
-METRICS = ['binary_accuracy']
+LOSS_FUNCTION = 'categorical_crossentropy'
+METRICS = ['accuracy']

@@ -31,7 +31,7 @@ def train_new_model(data, model):
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
         epochs=config.EPOCH_AMOUNT,
-        callbacks=[EarlyStopping(patience=10, monitor='val_binary_accuracy', restore_best_weights=True)]
+        callbacks=[EarlyStopping(patience=10, monitor='val_loss', restore_best_weights=True)]
     )
 
     model.evaluate(test_generator)
@@ -179,7 +179,7 @@ def show_plane(dividing_plane, name):
     plt.show()
 
 def main():
-    RUN_NAME = 'regularized_alexnet_small_dataset'
+    RUN_NAME = 'regularized_alexnet_dataset3'
     data = prepare_new_data()
     # data = load_data()
 
@@ -189,11 +189,11 @@ def main():
     #                                                   config.LOSS_FUNCTION,
     #                                                   config.METRICS)
 
-    # model = net.AdaptationNet.create_regularized_alexnet(
-    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #     len(data.CLASS_NAMES),
-    #     config.LOSS_FUNCTION,
-    #     config.METRICS)
+    model = net.AdaptationNet.create_regularized_alexnet(
+        (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+        len(data.CLASS_NAMES),
+        config.LOSS_FUNCTION,
+        config.METRICS)
 
     # model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
     #                                        len(data.CLASS_NAMES),
@@ -207,18 +207,20 @@ def main():
     #     config.LOSS_FUNCTION,
     #     config.METRICS)
 
-    # model, history = train_new_model(data, model)
-    # model.save(RUN_NAME+'_face_classifier.h5')
-    # history.to_csv(RUN_NAME + '_train_history.csv', index=False)
+    model, history = train_new_model(data, model)
+    model.save(RUN_NAME+'_face_classifier.h5')
+    history.to_csv(RUN_NAME + '_train_history.csv', index=False)
 
-    model = load_model(RUN_NAME+'_face_classifier.h5')
+    history.loc[:, ['loss', 'val_loss']].plot()
+    history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
+    plt.show()
+
+    # model = load_model(RUN_NAME+'_face_classifier.h5')
     # compile model on colab
-    # test_model_by_class(model, data)
-    # test_model(model, data)
+    test_model_by_class(model, data)
+    test_model(model, data)
 
-    # history.loc[:, ['loss', 'val_loss']].plot()
-    # history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
-    # plt.show()
+
 
     from tensorflow.keras.optimizers import Adam
     model.compile(optimizer=Adam(learning_rate=1, beta_1=0.1, beta_2=0.1), loss=config.LOSS_FUNCTION, metrics=config.METRICS)

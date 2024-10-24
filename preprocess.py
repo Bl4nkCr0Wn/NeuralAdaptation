@@ -133,19 +133,19 @@ class AdaptationData(object):
             self._training_dir,
             target_size=(input_size, input_size),
             batch_size=batch_size,
-            class_mode='binary')# class mode can be binary
+            class_mode='categorical')
 
         validation_generator = validation_datagen.flow_from_directory(
             self._validation_dir,
             target_size=(input_size, input_size),
             batch_size=batch_size,
-            class_mode='binary')
+            class_mode='categorical')
 
         test_generator = test_datagen.flow_from_directory(
             self._test_dir,
             target_size=(input_size, input_size),
             batch_size=batch_size,
-            class_mode='binary')
+            class_mode='categorical')
 
         return train_generator, validation_generator, test_generator
 
