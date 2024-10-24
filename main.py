@@ -212,15 +212,13 @@ def main():
     history.to_csv(RUN_NAME + '_train_history.csv', index=False)
 
     history.loc[:, ['loss', 'val_loss']].plot()
-    history.loc[:, ['binary_accuracy', 'val_binary_accuracy']].plot()
+    history.loc[:, ['accuracy', 'val_accuracy']].plot()
     plt.show()
 
     # model = load_model(RUN_NAME+'_face_classifier.h5')
     # compile model on colab
     test_model_by_class(model, data)
     test_model(model, data)
-
-
 
     from tensorflow.keras.optimizers import Adam
     model.compile(optimizer=Adam(learning_rate=1, beta_1=0.1, beta_2=0.1), loss=config.LOSS_FUNCTION, metrics=config.METRICS)
