@@ -80,12 +80,12 @@ def semi_supervised_rotate_fit(model, data, input_size, degree_generator=range(1
         degree_sequence.append((config.SPECIAL_DEGREES[1] + i)%360)
 
     for i in range(0, len(degree_sequence), 2):
+        print('Fitting {}'.format([degree_sequence[i], degree_sequence[i + 1]]))
         images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]], config.THETA_AMOUNT)
         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
         alternated_img = [item for pair in zipped for item in pair]
         x = np.concatenate(alternated_img, axis=0)
 
-        print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
         for j in range(1):
             y = model.predict(x)
             print('Predicted values are: {}'.format(y))
@@ -171,15 +171,18 @@ def calc_dividing_plane(model, data, input_size):
 
 def show_plane(dividing_plane, name):
     # Create the grouped bar plot
-    dividing_plane.plot(x='degree', rot=0)
+    #dividing_plane.plot(x='degree', rot=0)
+    plt.scatter(dividing_plane.degree, dividing_plane.classA, label='Class_A')
+    plt.scatter(dividing_plane.degree, dividing_plane.classB, label='Class_B')
     plt.title('Dividing Plane')
     plt.xlabel('Degree')
     plt.ylabel('Classifications')
     plt.savefig(name)
+    plt.legend()
     plt.show()
 
 def main():
-    RUN_NAME = 'regularized_alexnet_dataset3'
+    RUN_NAME = 'regularized_alexnet_dataset_large'
     data = prepare_new_data()
     # data = load_data()
 
@@ -221,10 +224,10 @@ def main():
     test_model(model, data)
 
     from tensorflow.keras.optimizers import Adam
-    model.compile(optimizer=Adam(learning_rate=1, beta_1=0.1, beta_2=0.1), loss=config.LOSS_FUNCTION, metrics=config.METRICS)
+    model.compile(optimizer=Adam(), loss=config.LOSS_FUNCTION, metrics=config.METRICS)
     ROTATION_TYPE = 'semi'# 'supervised', 'self'
     angle_range = 30# 15
-    ranges = range(1, 179, angle_range)
+    ranges = range(config.THETA_INCREMENT, 180, angle_range)
     # scoreA_res = []
     # scoreB_res = []
     res = calc_dividing_plane(model, data,

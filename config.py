@@ -7,8 +7,8 @@ BASE_WORK_DIR = os.getcwd() + os.sep + 'tmp'
 # Images information
 INPUT_VECTOR_SIZE = 512#224
 INPUT_DIMENSION = 3
-THETA_INCREMENT=10
-THETA_AMOUNT=5
+THETA_INCREMENT=15
+THETA_AMOUNT=800
 SPECIAL_DEGREES = [135, 315]
 
 # Model hyperparameters
