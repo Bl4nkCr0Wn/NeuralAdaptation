@@ -5,15 +5,13 @@ from tensorflow.keras.applications import EfficientNetB0, ResNet101
 class AdaptationNet(object):
     @staticmethod
     def create_alexnet(input_shape, num_classes, loss_function, metrics):
-        '''' Reaches 96.7% accuracy with 15 epochs, on supervised rotation succeeds, self-supervised fixates quickly. '''
         model = AdaptationNet._alexnet(input_shape, num_classes)
         model.compile(optimizer=Adam(), loss=loss_function, metrics=metrics)
         return model
 
     @staticmethod
     def create_regularized_alexnet(input_shape, num_classes, loss_function, metrics):
-        '''' Reaches 90% accuracy with 17 epochs, on supervised rotation gets to 30% accuracy around 240 degrees, and fixates afterwards. '''
-        model = AdaptationNet._regularized_alexnet(input_shape, num_classes, 0.5)# Higher strength then 0.01 didnt converge.
+        model = AdaptationNet._regularized_alexnet(input_shape, num_classes)
         model.compile(optimizer=Adam(), loss=loss_function, metrics=metrics)
         return model
 
@@ -103,7 +101,7 @@ class AdaptationNet(object):
         return model
 
     @staticmethod
-    def _regularized_alexnet(input_shape, num_classes, L2_strength = 0.5):
+    def _regularized_alexnet(input_shape, num_classes):
         """
         Build ANN architecture
         :param input_shape: (x size, y size, dimension amount)

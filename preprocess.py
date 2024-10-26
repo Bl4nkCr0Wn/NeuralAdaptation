@@ -5,26 +5,9 @@ import random
 import keras.applications.resnet
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-import re
 import numpy as np
 
 import config
-
-
-# def get_degree_images_dictionary(adaptation_generator):
-#     images_by_degree = {}
-#     for i in range(len(adaptation_generator)):
-#         x = adaptation_generator.next()
-#         filename = adaptation_generator.filenames[i]
-#         idx = filename.find('image_') + len('image_')
-#         file_degree = int(re.search(r'\d+', filename[idx:]).group())
-#         if file_degree not in images_by_degree:
-#             images_by_degree[file_degree] = [x]
-#         else:
-#             images_by_degree[file_degree].append(x)
-#
-#     return images_by_degree
-
 
 def get_images_by_degree(data, input_size, degree_list, amount_each):
     images_by_degree = {}
@@ -32,7 +15,6 @@ def get_images_by_degree(data, input_size, degree_list, amount_each):
         images_by_degree[degree] = data.get_adaptation_images(input_size, degree, amount_each)
 
     return images_by_degree
-
 
 class AdaptationData(object):
     CLASS_NAMES = ['A', 'B']
@@ -148,17 +130,6 @@ class AdaptationData(object):
             class_mode='categorical')
 
         return train_generator, validation_generator, test_generator
-
-    # def create_adaptation_generator(self, input_size):
-    #     adaptation_datagen = ImageDataGenerator(rescale=1. / 255.)
-    #     adaptation_generator = adaptation_datagen.flow_from_directory(
-    #         directory=os.path.dirname(self._adaptation_dir),
-    #         target_size=(input_size, input_size),
-    #         batch_size=1,
-    #         class_mode=None,
-    #         shuffle=False)
-    #
-    #     return adaptation_generator
 
     def get_adaptation_images(self, input_size, degree, amount_each):
         def load_img(path):

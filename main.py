@@ -31,7 +31,7 @@ def train_new_model(data, model):
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
         epochs=config.EPOCH_AMOUNT,
-        callbacks=[EarlyStopping(patience=10, monitor='val_loss', restore_best_weights=True)]
+        callbacks=[EarlyStopping(patience=5, monitor='val_loss', restore_best_weights=True)]
     )
 
     model.evaluate(test_generator)
@@ -70,9 +70,6 @@ def self_supervised_rotate_fit(model, data, input_size, angle_range, angle_range
     return model
 
 def semi_supervised_rotate_fit(model, data, input_size, degree_generator=range(1, 180, 1)):
-    # Index moving degree images by degree
-    # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
-
     # Train each image class alternatively
     degree_sequence = []
     for i in degree_generator:
@@ -157,7 +154,7 @@ def calc_dividing_plane(model, data, input_size):
     history = {'degree' : [], 'classA' : [], 'classB' : []}
     for degree in range(0, 360, config.THETA_INCREMENT):
         degree = (config.SPECIAL_DEGREES[0] + degree) % 360
-        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree], config.THETA_AMOUNT)
+        images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree], (config.THETA_AMOUNT // 10))
         x = np.concatenate(images_by_degree[degree], axis=0)
         print('Fitting {}'.format(degree))
         y = model.predict(x)
@@ -186,29 +183,11 @@ def main():
     data = prepare_new_data()
     # data = load_data()
 
-    # prepare model architecture
-    # model = net.AdaptationNet.create_pretrained_model((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #                                                   len(data.CLASS_NAMES),
-    #                                                   config.LOSS_FUNCTION,
-    #                                                   config.METRICS)
-
     model = net.AdaptationNet.create_regularized_alexnet(
         (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
         len(data.CLASS_NAMES),
         config.LOSS_FUNCTION,
         config.METRICS)
-
-    # model = net.AdaptationNet.create_alexnet((config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #                                        len(data.CLASS_NAMES),
-    #                                        config.LOSS_FUNCTION,
-    #                                        config.METRICS)
-
-    # resnet requires added preprocessing function to ImageDataGenerator
-    # model = net.AdaptationNet.create_resnet(
-    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #     len(data.CLASS_NAMES),
-    #     config.LOSS_FUNCTION,
-    #     config.METRICS)
 
     model, history = train_new_model(data, model)
     model.save(RUN_NAME+'_face_classifier.h5')
@@ -219,21 +198,20 @@ def main():
     plt.show()
 
     # model = load_model(RUN_NAME+'_face_classifier.h5')
-    # compile model on colab
     test_model_by_class(model, data)
-    test_model(model, data)
+    # test_model(model, data)
 
+    # Set learning rate optimizer for rotation stage
     from tensorflow.keras.optimizers import Adam
     model.compile(optimizer=Adam(), loss=config.LOSS_FUNCTION, metrics=config.METRICS)
+
+    res = calc_dividing_plane(model, data,
+                              config.INPUT_VECTOR_SIZE)
+    show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(1) + '.png')
+
     ROTATION_TYPE = 'semi'# 'supervised', 'self'
     angle_range = 30# 15
     ranges = range(config.THETA_INCREMENT, 180, angle_range)
-    # scoreA_res = []
-    # scoreB_res = []
-    res = calc_dividing_plane(model, data,
-                              config.INPUT_VECTOR_SIZE)  # requires adding special angles to adaptation data
-    # res.to_csv(RUN_NAME + '_dividing_plane_angle_' + str(1) + '.csv')
-    show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(1) + '.png')
     for angle in ranges:
         if angle + angle_range > 180:
             angle_range = 180 - angle
@@ -243,19 +221,12 @@ def main():
             model = semi_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, range(angle, angle + angle_range, config.THETA_INCREMENT))
         else:
             model = supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, range(angle, angle + angle_range, config.THETA_INCREMENT))
-        # scoreA, scoreB = test_model_by_class(model, data)
-        # scoreA_res.append(scoreA)
-        # scoreB_res.append(scoreB)
+
         res = calc_dividing_plane(model, data,
-                                  config.INPUT_VECTOR_SIZE)  # requires adding special angles to adaptation data
-        # res.to_csv(RUN_NAME + '_dividing_plane_angle_'+ str(angle) +'.csv')
+                                  config.INPUT_VECTOR_SIZE)
         show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(angle + angle_range) + '.png')
 
     # model.save(RUN_NAME + '_'+ ROTATION_TYPE + '_rotation.h5')
-    # rotation_res = pd.DataFrame({'scoreA' : scoreA_res, 'scoreB' : scoreB_res }, index = list(ranges))
-    # rotation_res.to_csv(RUN_NAME + '_'+ ROTATION_TYPE + '_rotation_history.csv', index=False)
-    # rotation_res.plot()
-    # plt.show()
     return
 
 if __name__ == '__main__':
