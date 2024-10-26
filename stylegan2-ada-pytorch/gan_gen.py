@@ -138,8 +138,8 @@ def main(model_path, base_save_path, resolution):
             img_path = os.path.join(results_dir, f"{serial_number}_image_{theta_str}_{i + 1}.png")
             save_image(img, img_path)
 
-            latent_vector_path = os.path.join(results_dir, f"{serial_number}_image_{theta_str}_{i + 1}_latent_vector.txt")
-            save_latent_vector(z, latent_vector_path)
+            # latent_vector_path = os.path.join(results_dir, f"{serial_number}_image_{theta_str}_{i + 1}_latent_vector.txt")
+            # save_latent_vector(z, latent_vector_path)
 
             # # Display the first image generated
             # if not first_image_displayed:
