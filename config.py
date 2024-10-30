@@ -8,12 +8,12 @@ BASE_WORK_DIR = os.getcwd() + os.sep + 'tmp'
 INPUT_VECTOR_SIZE = 512#224
 INPUT_DIMENSION = 3
 THETA_INCREMENT=15
-THETA_AMOUNT=800
+THETA_AMOUNT=800 /2
 SPECIAL_DEGREES = [135, 315]
 
 # Model hyperparameters
 EPOCH_AMOUNT = 100
 BATCH_SIZE = 32
 SPLIT_SIZE = 0.8
-LOSS_FUNCTION = 'categorical_crossentropy'
+LOSS_FUNCTION = 'binary_crossentropy'
 METRICS = ['accuracy']
