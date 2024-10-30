@@ -86,20 +86,20 @@ def semi_supervised_rotate_fit(model, data, input_size, degree):
 
     y = model.predict(x)
     print('Predicted: {}'.format(y))
-    classes = np.argmax(y, axis=1)
+    classes = [1 if p > 0.5 else 0 for p in y]# np.argmax(y, axis=1)
     print('augmenting probs..')
     y = []
     wrong = 0
     for i, c in enumerate(classes):
         if c == 0:
-            y.append([1.0, 0.0])
+            # y.append([1.0, 0.0])
             if (i % 2) == 1:
                 wrong += 1
         else:
-            y.append([0.0, 1.0])
+            # y.append([0.0, 1.0])
             if (i % 2) == 0:
                 wrong += 1
-
+    y = classes
     y = array(y)
     print('Classes are (count of wrong classification): {}'.format(wrong))
 
@@ -114,7 +114,7 @@ def semi_supervised_rotate_fit(model, data, input_size, degree):
     #                 v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
 
     model.fit(x[split:], y[split:],validation_data = (x[:split], y[:split]) , epochs=config.EPOCH_AMOUNT,
-              callbacks=[EarlyStopping(patience=5, monitor='val_loss', restore_best_weights=True)])
+              callbacks=[EarlyStopping(patience=3, monitor='val_loss', restore_best_weights=True)])
     del x, y, classes
     # return model
 
@@ -162,8 +162,9 @@ def test_model_by_class(model, data):
     test = []
     for x, y in tg:
         y_pred = model.predict(x)
-        pred.extend(np.argmax(y_pred, axis=1))
-        test.extend(np.argmax(y, axis=1))
+        print(y_pred)
+        pred.extend([1 if p > 0.5 else 0 for p in y_pred])# pred.extend(np.argmax(y_pred, axis=1))
+        test.extend(y)# test.extend(np.argmax(y, axis=1))
         if len(test) >= tg.samples:
             break
     test = np.array(test)
@@ -184,7 +185,7 @@ def calc_dividing_plane(model, data, input_size):
         images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree], config.THETA_AMOUNT//5)
         x = np.concatenate(images_by_degree[degree], axis=0)
         y = model.predict(x)
-        classes = np.argmax(y, axis=1)
+        classes = np.array([1 if p > 0.5 else 0 for p in y])# classes = np.argmax(y, axis=1)
         history['degree'].append(degree)
         history['classA'].append(np.sum(classes == 0))
         history['classB'].append(np.sum(classes == 1))
@@ -205,30 +206,30 @@ def main():
     # data = prepare_new_data()
     data = load_data()
 
-    model = net.AdaptationNet.create_regularized_custom_alexnet(
-        (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-        len(data.CLASS_NAMES),
-        config.LOSS_FUNCTION,
-        config.METRICS)
+    # model = net.AdaptationNet.create_regularized_custom_alexnet(
+    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+    #     len(data.CLASS_NAMES),
+    #     config.LOSS_FUNCTION,
+    #     config.METRICS)
+    #
+    # model, history = train_new_model(data, model)
+    # model.save(RUN_NAME+'_face_classifier.h5')
+    # history.to_csv(RUN_NAME + '_train_history.csv', index=False)
+    # history.loc[:, ['loss', 'val_loss']].plot()
+    # history.loc[:, ['accuracy', 'val_accuracy']].plot()
+    # plt.show()
 
-    model, history = train_new_model(data, model)
-    model.save(RUN_NAME+'_face_classifier.h5')
-    history.to_csv(RUN_NAME + '_train_history.csv', index=False)
-    history.loc[:, ['loss', 'val_loss']].plot()
-    history.loc[:, ['accuracy', 'val_accuracy']].plot()
-    plt.show()
+    model = load_model(RUN_NAME+'_face_classifier.h5')
+    # test_model_by_class(model, data)
 
-    # model = load_model(RUN_NAME+'_face_classifier.h5')
-    test_model_by_class(model, data)
-
-    res = calc_dividing_plane(model, data,
-                              config.INPUT_VECTOR_SIZE)
-    show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(0))
+    # res = calc_dividing_plane(model, data,
+    #                           config.INPUT_VECTOR_SIZE)
+    # show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(0))
 
     # prepare model for semi rotation
-    for layer in model.layers:
-        if isinstance(layer, Conv2D):
-            layer.trainable = False
+    # for layer in model.layers:
+    #     if isinstance(layer, Conv2D):
+    #         layer.trainable = False
 
     ROTATION_TYPE = 'semi'#, 'supervised', 'self'
     angles = range(config.THETA_INCREMENT, 181, config.THETA_INCREMENT)
