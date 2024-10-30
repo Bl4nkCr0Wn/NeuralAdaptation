@@ -35,7 +35,7 @@ def train_new_model(data, model):
         validation_data=validation_generator,
         validation_steps=validation_generator.samples // validation_generator.batch_size,
         epochs=config.EPOCH_AMOUNT,
-        callbacks=[EarlyStopping(patience=3, monitor='val_loss', restore_best_weights=True)]
+        callbacks=[EarlyStopping(patience=3, monitor='val_loss', min_delta=0.1, restore_best_weights=True)]
     )
 
     model.evaluate(test_generator)
@@ -49,31 +49,7 @@ def test_model(model, data):
     print('Evaluate model on test data:')
     return model.evaluate(test_generator)
 
-# def self_supervised_rotate_fit(model, data, input_size, angle_range, angle_range_start = 1):
-#     # Index moving degree images by degree
-#     # adaptation_generator = data.create_adaptation_generator(config.INPUT_VECTOR_SIZE)
-#     # images_by_degree = preprocess.get_degree_images_dictionary(adaptation_generator)
-#
-#     # Train each image class alternatively
-#     degree_sequence = []
-#     for i in range(angle_range_start, angle_range_start + angle_range):
-#         degree_sequence.append(135 + i)
-#         degree_sequence.append((315 + i)%360)
-#
-#     for i in range(0, len(degree_sequence), 2):
-#         images_by_degree = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
-#         zipped = zip(images_by_degree[degree_sequence[i]], images_by_degree[degree_sequence[i+1]])
-#         alternated_img = [item for pair in zipped for item in pair]
-#         x = np.concatenate(alternated_img, axis=0)
-#
-#         print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
-#         y = model.predict(x)
-#         print('Predicted values are: {}'.format(y))
-#         model.fit(x, y, epochs=10)
-#
-#     return model
-
-def semi_supervised_rotate_fit(model, data, input_size, degree):
+def self_supervised_rotate_fit(model, data, input_size, degree):
     ''' This is semi supervised because val_loss is calculated with supervised labels '''
     # Train each image class alternatively
     degree_sequence = [config.SPECIAL_DEGREES[0] + degree, (config.SPECIAL_DEGREES[1] + degree)%360]
@@ -87,7 +63,7 @@ def semi_supervised_rotate_fit(model, data, input_size, degree):
     y = model.predict(x)
     print('Predicted: {}'.format(y))
     classes = [1 if p > 0.5 else 0 for p in y]# np.argmax(y, axis=1)
-    print('augmenting probs..')
+    # print('augmenting probs..')
     y = []
     wrong = 0
     for i, c in enumerate(classes):
@@ -114,46 +90,32 @@ def semi_supervised_rotate_fit(model, data, input_size, degree):
     #                 v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
 
     model.fit(x[split:], y[split:],validation_data = (x[:split], y[:split]) , epochs=config.EPOCH_AMOUNT,
-              callbacks=[EarlyStopping(patience=3, monitor='val_loss', restore_best_weights=True)])
+              callbacks=[EarlyStopping(patience=3, monitor='val_loss',min_delta=0.1, restore_best_weights=True)])
     del x, y, classes
     # return model
 
-def supervised_rotate_fit(model, degree_generator=range(1, 180, 1)):
+def supervised_rotate_fit(model, data, input_size, degree_generator=range(1, 180, 1)):
     # Train each image class alternatively
+    raise Exception("not adjusted for binary classifier")
     degree_sequence = []
     for i in degree_generator:
-        degree_sequence.append(config.SPECIAL_DEGREES[0] + i)
-        degree_sequence.append((config.SPECIAL_DEGREES[1] + i) % 360)
+        degree_sequence.append(135 + i)
+        degree_sequence.append((315 + i)%360)
 
+    fit = array([[1.0, 0.0]])# A class
+    alternate_fit = array([[0.0, 1.0]])# B class
     for i in range(0, len(degree_sequence), 2):
-        config.SPECIAL_DEGREES = [degree_sequence[i], degree_sequence[i+1]]
-        data = prepare_new_data()
-        model, history = train_new_model(data, model)
-        history.loc[:, ['loss', 'val_loss']].plot()
-        history.loc[:, ['accuracy', 'val_accuracy']].plot()
-        plt.show()
+        images = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
+        images = zip(images[degree_sequence[i]], images[degree_sequence[i+1]])
+        images = [item for pair in images for item in pair]
+        x = np.concatenate(images, axis=0)
+        images = None # release memory
 
-# def supervised_rotate_fit(model, data, input_size, degree_generator=range(1, 180, 1)):
-#     # Train each image class alternatively
-#     degree_sequence = []
-#     for i in degree_generator:
-#         degree_sequence.append(135 + i)
-#         degree_sequence.append((315 + i)%360)
-#
-#     fit = array([[1.0, 0.0]])# A class
-#     alternate_fit = array([[0.0, 1.0]])# B class
-#     for i in range(0, len(degree_sequence), 2):
-#         images = preprocess.get_images_by_degree(data, input_size,[degree_sequence[i], degree_sequence[i+1]])
-#         images = zip(images[degree_sequence[i]], images[degree_sequence[i+1]])
-#         images = [item for pair in images for item in pair]
-#         x = np.concatenate(images, axis=0)
-#         images = None # release memory
-#
-#         y = [fit, alternate_fit] * int(len(images) / 2)
-#         y = np.concatenate(y, axis=0)
-#         print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
-#         print('Predicted values are: {}'.format(model.predict(x)))
-#         model.fit(x, y, epochs=10)# can it be 1 epoch given enough examples?
+        y = [fit, alternate_fit] * int(len(images) / 2)
+        y = np.concatenate(y, axis=0)
+        print('Fitting {}'.format([degree_sequence[i], degree_sequence[i+1]]))
+        print('Predicted values are: {}'.format(model.predict(x)))
+        model.fit(x, y, epochs=10)# can it be 1 epoch given enough examples?
 
 def test_model_by_class(model, data):
     dg,vg,tg = data.create_generators(config.INPUT_VECTOR_SIZE, config.BATCH_SIZE)
@@ -227,18 +189,18 @@ def main():
     # show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(0))
 
     # prepare model for semi rotation
-    # for layer in model.layers:
-    #     if isinstance(layer, Conv2D):
-    #         layer.trainable = False
+    for layer in model.layers:
+        if isinstance(layer, Conv2D):
+            layer.trainable = False
 
-    ROTATION_TYPE = 'semi'#, 'supervised', 'self'
+    ROTATION_TYPE = 'self'#, 'supervised'
     angles = range(config.THETA_INCREMENT, 181, config.THETA_INCREMENT)
     for angle in angles:
         success = False
         while not success:
             try:
                 gc.collect()
-                semi_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle)
+                self_supervised_rotate_fit(model, data, config.INPUT_VECTOR_SIZE, angle)
                 success = True
             except Exception as e:
                 print('Failed', e)
