@@ -1,4 +1,5 @@
 import gc
+import math
 
 import numpy as np
 from numpy import array
@@ -50,7 +51,6 @@ def test_model(model, data):
     return model.evaluate(test_generator)
 
 def self_supervised_rotate_fit(model, data, input_size, degree):
-    ''' This is semi supervised because val_loss is calculated with supervised labels '''
     # Train each image class alternatively
     degree_sequence = [config.SPECIAL_DEGREES[0] + degree, (config.SPECIAL_DEGREES[1] + degree)%360]
     print('Fitting {}'.format([degree_sequence[0], degree_sequence[1]]))
@@ -80,16 +80,38 @@ def self_supervised_rotate_fit(model, data, input_size, degree):
     print('Classes are (count of wrong classification): {}'.format(wrong))
 
     split = len(x)//5#config.SPLIT_SIZE
-    # y_val = np.concatenate([array([[1.0, 0.0]]), array([[0.0, 1.0]])] * int(len(x) / 2), axis=0)
+    y_val = np.concatenate([array([0.0]), array([1.0])] * int(len(x) / 2), axis=0)
 
     # Generate new weight plane for classification
-    # for layer in model.layers:
-    #     if isinstance(layer, Dense):
-    #         for v in layer.trainable_variables:
-    #             if 'kernel' in v.name or 'bias' in v.name:
-    #                 v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
+    for layer in model.layers:
+        if isinstance(layer, Dense):
+        # for v in layer.trainable_variables:
+            # Modify the weights with noise from a some distribution
+            def uniform_noise(weights):
+                # Get the shape of the kernel weights
+                weight_shape = weights.shape
+                # Calculate fan_in and fan_out
+                fan_in = weight_shape[0]  # Number of input units
+                if len(weight_shape) == 2:
+                    fan_out = weight_shape[1]  # Number of output units
+                else:
+                    fan_out = 0
+                limit = math.sqrt(6 / (fan_in + fan_out))
+                noise_weights = tf.random.uniform(shape=weights.shape, minval=-limit, maxval=limit)
+                return weights + noise_weights
 
-    model.fit(x[split:], y[split:],validation_data = (x[:split], y[:split]) , epochs=config.EPOCH_AMOUNT,
+            weights, biases = layer.get_weights()
+            # Add noise to weights and biases
+            weights = uniform_noise(weights)
+            biases = uniform_noise(biases)
+            # Set the modified weights and biases
+            layer.set_weights([weights, biases])
+
+            # K.set_value(layer.weights[0], new_weights)
+            # if 'kernel' in v.name or 'bias' in v.name:
+            #     v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
+
+    model.fit(x[split:], y[split:],validation_data = (x[:split], y_val[:split]) , epochs=config.EPOCH_AMOUNT,
               callbacks=[EarlyStopping(patience=3, monitor='val_loss',min_delta=0.1, restore_best_weights=True)])
     del x, y, classes
     # return model
@@ -164,7 +186,7 @@ def show_plane(dividing_plane, name):
     plt.show()
 
 def main():
-    RUN_NAME = 'regularized_custom_binary_alexnet_dataset_XL'
+    RUN_NAME = 'regularized_binary_alexnet_dataset_XL'
     # data = prepare_new_data()
     data = load_data()
 
@@ -181,7 +203,7 @@ def main():
     # history.loc[:, ['accuracy', 'val_accuracy']].plot()
     # plt.show()
 
-    model = load_model(RUN_NAME+'_face_classifier.h5')
+    model = load_model(RUN_NAME+'_face_classifier.h5', custom_objects={'custom_loss' : net.custom_loss})
     # test_model_by_class(model, data)
 
     # res = calc_dividing_plane(model, data,
