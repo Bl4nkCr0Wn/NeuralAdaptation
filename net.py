@@ -3,7 +3,7 @@ import math
 from keras.initializers.initializers_v2 import RandomNormal
 from keras.losses import binary_crossentropy
 from tensorflow.keras import layers, models, regularizers
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.applications import EfficientNetB0, ResNet101
 import tensorflow as tf
 
@@ -14,12 +14,12 @@ def custom_loss(y_true, y_pred):
     it needs to learn from right predictions == loss != zero
     
     '''
-    # distance_loss = tf.abs(0.5 - tf.reduce_mean(tf.abs(y_pred)))
+    distance_loss = tf.abs(0.5 - tf.reduce_mean(tf.abs(y_pred)))
 
     # L2 regularization for all layers
     #l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in model.trainable_weights]) * l2_lambda
 
-    total_loss = bce_loss# + distance_loss# + l2_loss
+    total_loss = bce_loss + distance_loss# + l2_loss
     return total_loss
 
 class AdaptationNet(object):
@@ -32,7 +32,7 @@ class AdaptationNet(object):
     @staticmethod
     def create_regularized_custom_alexnet(input_shape, num_classes, loss_function, metrics):
         model = AdaptationNet._regularized_custom_alexnet(input_shape, num_classes)
-        model.compile(optimizer=Adam(), loss=custom_loss, metrics=metrics)
+        model.compile(optimizer=SGD(learning_rate=0.01), loss=custom_loss, metrics=metrics)
         return model
 
     @staticmethod

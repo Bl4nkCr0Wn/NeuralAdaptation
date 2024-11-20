@@ -80,39 +80,40 @@ def self_supervised_rotate_fit(model, data, input_size, degree):
     print('Classes are (count of wrong classification): {}'.format(wrong))
 
     split = len(x)//5#config.SPLIT_SIZE
-    y_val = np.concatenate([array([0.0]), array([1.0])] * int(len(x) / 2), axis=0)
+    # y_val = np.concatenate([array([0.0]), array([1.0])] * int(len(x) / 2), axis=0)
 
     # Generate new weight plane for classification
-    for layer in model.layers:
-        if isinstance(layer, Dense):
-        # for v in layer.trainable_variables:
-            # Modify the weights with noise from a some distribution
-            def uniform_noise(weights):
-                # Get the shape of the kernel weights
-                weight_shape = weights.shape
-                # Calculate fan_in and fan_out
-                fan_in = weight_shape[0]  # Number of input units
-                if len(weight_shape) == 2:
-                    fan_out = weight_shape[1]  # Number of output units
-                else:
-                    fan_out = 0
-                limit = math.sqrt(6 / (fan_in + fan_out))
-                noise_weights = tf.random.uniform(shape=weights.shape, minval=-limit, maxval=limit)
-                return weights + noise_weights
+    # for layer in model.layers:
+    #     if isinstance(layer, Dense):
+    #     # for v in layer.trainable_variables:
+    #         # Modify the weights with noise from a some distribution
+    #         def uniform_noise(weights):
+    #             # Get the shape of the kernel weights
+    #             weight_shape = weights.shape
+    #             # Calculate fan_in and fan_out
+    #             fan_in = weight_shape[0]  # Number of input units
+    #             if len(weight_shape) == 2:
+    #                 fan_out = weight_shape[1]  # Number of output units
+    #             else:
+    #                 fan_out = 0
+    #             limit = math.sqrt(6 / (fan_in + fan_out))
+    #             noise_weights = tf.random.uniform(shape=weights.shape, minval=-limit, maxval=limit)
+    #             return weights + noise_weights
+    #
+    #         weights, biases = layer.get_weights()
+    #         # Add noise to weights and biases
+    #         weights = uniform_noise(weights)
+    #         biases = uniform_noise(biases)
+    #         # Set the modified weights and biases
+    #         layer.set_weights([weights, biases])
+    #
+    #         # K.set_value(layer.weights[0], new_weights)
+    #         # if 'kernel' in v.name or 'bias' in v.name:
+    #         #     v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
 
-            weights, biases = layer.get_weights()
-            # Add noise to weights and biases
-            weights = uniform_noise(weights)
-            biases = uniform_noise(biases)
-            # Set the modified weights and biases
-            layer.set_weights([weights, biases])
-
-            # K.set_value(layer.weights[0], new_weights)
-            # if 'kernel' in v.name or 'bias' in v.name:
-            #     v.assign(tf.keras.initializers.GlorotUniform()(v.shape))
-
-    model.fit(x[split:], y[split:],validation_data = (x[:split], y_val[:split]) , epochs=config.EPOCH_AMOUNT,
-              callbacks=[EarlyStopping(patience=3, monitor='val_loss',min_delta=0.1, restore_best_weights=True)])
+    # model.fit(x[split:], y[split:],validation_data = (x[:split], y_val[:split]) , epochs=config.EPOCH_AMOUNT,
+    #           callbacks=[EarlyStopping(patience=3, monitor='val_loss',min_delta=0.1, restore_best_weights=True)])
+    model.fit(x[split:], y[split:], validation_data = (x[:split], y[:split]), epochs=5, steps_per_epoch=len(x))
     del x, y, classes
     # return model
 
@@ -186,29 +187,29 @@ def show_plane(dividing_plane, name):
     plt.show()
 
 def main():
-    RUN_NAME = 'regularized_binary_alexnet_dataset_XL'
+    RUN_NAME = 'regularized_custom_alexnet_SGD_dataset_XL'
     # data = prepare_new_data()
     data = load_data()
 
-    # model = net.AdaptationNet.create_regularized_custom_alexnet(
-    #     (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
-    #     len(data.CLASS_NAMES),
-    #     config.LOSS_FUNCTION,
-    #     config.METRICS)
-    #
-    # model, history = train_new_model(data, model)
-    # model.save(RUN_NAME+'_face_classifier.h5')
-    # history.to_csv(RUN_NAME + '_train_history.csv', index=False)
-    # history.loc[:, ['loss', 'val_loss']].plot()
-    # history.loc[:, ['accuracy', 'val_accuracy']].plot()
-    # plt.show()
+    model = net.AdaptationNet.create_regularized_custom_alexnet(
+        (config.INPUT_VECTOR_SIZE, config.INPUT_VECTOR_SIZE, config.INPUT_DIMENSION),
+        len(data.CLASS_NAMES),
+        config.LOSS_FUNCTION,
+        config.METRICS)
 
-    model = load_model(RUN_NAME+'_face_classifier.h5', custom_objects={'custom_loss' : net.custom_loss})
-    # test_model_by_class(model, data)
+    model, history = train_new_model(data, model)
+    model.save(RUN_NAME+'_face_classifier.h5')
+    history.to_csv(RUN_NAME + '_train_history.csv', index=False)
+    history.loc[:, ['loss', 'val_loss']].plot()
+    history.loc[:, ['accuracy', 'val_accuracy']].plot()
+    plt.show()
 
-    # res = calc_dividing_plane(model, data,
-    #                           config.INPUT_VECTOR_SIZE)
-    # show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(0))
+    # model = load_model(RUN_NAME+'_face_classifier.h5', custom_objects={'custom_loss' : net.custom_loss})
+    test_model_by_class(model, data)
+
+    res = calc_dividing_plane(model, data,
+                              config.INPUT_VECTOR_SIZE)
+    show_plane(res, RUN_NAME + '_dividing_plane_angle_' + str(0))
 
     # prepare model for semi rotation
     for layer in model.layers:
